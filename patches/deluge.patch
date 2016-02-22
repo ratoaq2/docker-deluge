@@ -1,0 +1,55 @@
+diff -Naur deluge/core/torrentmanager.py deluge-new/core/torrentmanager.py
+--- deluge/core/torrentmanager.py	2016-02-22 20:49:31.223081078 +0100
++++ deluge-new/core/torrentmanager.py	2016-02-22 20:59:32.522124074 +0100
+@@ -111,10 +111,22 @@
+         self.move_completed = move_completed
+         self.move_completed_path = move_completed_path
+ 
++    def __eq__(self, other): 
++        return other is not None and self.__dict__ == other.__dict__
++
++    def __ne__(self, other): 
++        return not self == other
++
+ class TorrentManagerState:
+     def __init__(self):
+         self.torrents = []
+ 
++    def __eq__(self, other): 
++        return other is not None and self.__dict__ == other.__dict__
++
++    def __ne__(self, other): 
++        return not self == other
++
+ class TorrentManager(component.Component):
+     """
+     TorrentManager contains a list of torrents in the current libtorrent
+@@ -156,6 +168,9 @@
+ 
+         # Workaround to determine if TorrentAddedEvent is from state file
+         self.session_started = False
++        
++        # Keep the last saved state
++        self.last_saved_state = None
+ 
+         # Register set functions
+         self.config.register_set_function("max_connections_per_torrent",
+@@ -705,6 +720,10 @@
+             )
+             state.torrents.append(torrent_state)
+ 
++        # If the state hasn't changed, no need to save it
++        if self.last_saved_state == state:
++            return
++
+         # Pickle the TorrentManagerState object
+         filepath = os.path.join(get_config_dir(), "state", "torrents.state")
+         filepath_tmp = filepath + ".tmp"
+@@ -727,6 +746,7 @@
+             os.fsync(state_file.fileno())
+             state_file.close()
+             os.rename(filepath_tmp, filepath)
++            self.last_saved_state = state
+         except IOError:
+             log.error("Unable to save %s: %s", filepath, ex)
+             if os.path.isfile(filepath_bak):
